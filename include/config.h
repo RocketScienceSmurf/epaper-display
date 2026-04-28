@@ -5,7 +5,7 @@
 
 // How often to refresh the display (ms). e-paper has limited refresh cycles,
 // so don't set this too low. 5 minutes is a reasonable minimum.
-#define REFRESH_INTERVAL_MS (5UL * 60UL * 1000UL)
+#define REFRESH_INTERVAL_MS (15UL * 60UL * 1000UL)
 
 // Ethernet timeout on boot (ms)
 #define ETH_CONNECT_TIMEOUT_MS 30000

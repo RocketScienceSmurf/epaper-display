@@ -15,7 +15,7 @@ void EPD::init() {
 
     waitBusy();
     sendCommand(0x12);  // Software reset
-    delay(10);          // SSD1681 datasheet: wait ≥10ms after SWRESET before issuing commands
+    delay(10);          // SSD1681 requires ≥10ms after SWRESET; waitBusy() alone is unreliable here
     waitBusy();
 
     sendCommand(0x01);  // Driver output control: 200 gates
@@ -64,7 +64,8 @@ void EPD::display(const uint8_t* black_buf, const uint8_t* red_buf) {
     sendCommand(0x22);  // Display update control sequence
     sendData(0xF7);
     sendCommand(0x20);  // Activate display update
-    delay(16000);       // 3-color full refresh takes ~15s; GPIO36 floats LOW so waitBusy() is unreliable
+    delay(16000);       // GPIO36 (BUSY) has no pull-up and floats LOW when idle, so waitBusy() exits
+                        // immediately. Hard-wait 16s to cover the full ~15s 3-color refresh waveform.
     waitBusy();
 }
 
