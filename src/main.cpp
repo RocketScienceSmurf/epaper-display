@@ -11,8 +11,13 @@
 #define ETH_PHY_MDC   23
 #define ETH_PHY_MDIO  18
 
+// User button (KEY1) on GPIO34: input-only, external pull-up, active-low
+#define BUTTON_PIN    34
+#define DEBOUNCE_MS   50
+
 static bool eth_connected  = false;
 static bool g_initial_done = false;
+static bool g_force_refresh = false;
 static EPD  epd;
 
 static void onEthEvent(WiFiEvent_t event) {
@@ -161,6 +166,8 @@ void setup() {
     Serial.begin(115200);
     Serial.println("\n[BOOT] e-Paper display starting");
 
+    pinMode(BUTTON_PIN, INPUT);
+
     WiFi.onEvent(onEthEvent);
     ETH.begin(ETH_PHY_ADDR, ETH_PHY_POWER, ETH_PHY_MDC, ETH_PHY_MDIO,
               ETH_PHY_LAN8720, ETH_CLOCK_GPIO17_OUT);
@@ -184,16 +191,28 @@ void setup() {
 
 void loop() {
     static unsigned long last_update = 0;
+    static int  btn_prev = HIGH;
+    static unsigned long btn_time = 0;
+
+    // Debounced button poll: GPIO34 external pull-up, active-low
+    int btn_now = digitalRead(BUTTON_PIN);
+    if (btn_prev == HIGH && btn_now == LOW && millis() - btn_time > DEBOUNCE_MS) {
+        btn_time = millis();
+        Serial.println("[BTN] Manual refresh triggered");
+        g_force_refresh = true;
+    }
+    btn_prev = btn_now;
 
     if (!eth_connected) {
-        delay(1000);
+        delay(10);
         return;
     }
 
-    if (!g_initial_done || millis() - last_update >= REFRESH_INTERVAL_MS) {
-        g_initial_done = true;
+    if (g_force_refresh || !g_initial_done || millis() - last_update >= REFRESH_INTERVAL_MS) {
+        g_initial_done  = true;
+        g_force_refresh = false;
         last_update = millis();
         fetchAndDisplay(IMAGE_URL);
     }
-    delay(1000);
+    delay(10);
 }
