@@ -168,25 +168,16 @@ void setup() {
 
     pinMode(BUTTON_PIN, INPUT);
 
+    // Register event handler before ETH.begin so no events are missed.
+    // ARDUINO_EVENT_ETH_GOT_IP sets eth_connected; loop() triggers the
+    // first fetch as soon as that flag goes true via !g_initial_done.
+    // No polling loop needed — the LAN8720A surfaces link changes as
+    // events through the ESP-IDF EMAC driver.
     WiFi.onEvent(onEthEvent);
     ETH.begin(ETH_PHY_ADDR, ETH_PHY_POWER, ETH_PHY_MDC, ETH_PHY_MDIO,
               ETH_PHY_LAN8720, ETH_CLOCK_GPIO17_OUT);
 
-    Serial.print("[ETH] Waiting for link");
-    unsigned long t = millis();
-    while (!eth_connected && millis() - t < ETH_CONNECT_TIMEOUT_MS) {
-        Serial.print('.');
-        delay(500);
-    }
-    Serial.println();
-
-    if (!eth_connected) {
-        Serial.println("[ETH] No link - will retry in loop");
-        return;
-    }
-
-    g_initial_done = true;
-    fetchAndDisplay(IMAGE_URL);
+    Serial.println("[ETH] Waiting for link (event-driven)...");
 }
 
 void loop() {
