@@ -15,22 +15,30 @@
 #define BUTTON_PIN    34
 #define DEBOUNCE_MS   50
 
-static bool eth_connected  = false;
-static bool g_initial_done = false;
+static bool eth_connected   = false;
+static bool g_initial_done  = false;
 static bool g_force_refresh = false;
 static EPD  epd;
 
 static void onEthEvent(WiFiEvent_t event) {
     switch (event) {
         case ARDUINO_EVENT_ETH_START:
+            Serial.println("[ETH] Started");
             ETH.setHostname("epaper-display");
+            break;
+        case ARDUINO_EVENT_ETH_CONNECTED:
+            Serial.println("[ETH] Link up");
             break;
         case ARDUINO_EVENT_ETH_GOT_IP:
             Serial.printf("[ETH] IP: %s\n", ETH.localIP().toString().c_str());
             eth_connected = true;
             break;
         case ARDUINO_EVENT_ETH_DISCONNECTED:
+            Serial.println("[ETH] Link down");
+            eth_connected = false;
+            break;
         case ARDUINO_EVENT_ETH_STOP:
+            Serial.println("[ETH] Stopped");
             eth_connected = false;
             break;
         default:
@@ -57,8 +65,15 @@ static bool readBytes(WiFiClient* s, uint8_t* buf, size_t len) {
 
 static bool fetchAndDisplay(const char* url) {
     HTTPClient http;
-    http.begin(url);
+
+    // Append timestamp to bust any server-side cache
+    char full_url[256];
+    snprintf(full_url, sizeof(full_url), "%s&_t=%lu", url, millis());
+
+    http.begin(full_url);
     http.setTimeout(15000);
+    http.addHeader("Cache-Control", "no-cache");
+    http.addHeader("Pragma", "no-cache");
 
     int code = http.GET();
     if (code != HTTP_CODE_OK) {
@@ -177,7 +192,7 @@ void setup() {
     ETH.begin(ETH_PHY_ADDR, ETH_PHY_POWER, ETH_PHY_MDC, ETH_PHY_MDIO,
               ETH_PHY_LAN8720, ETH_CLOCK_GPIO17_OUT);
 
-    Serial.println("[ETH] Waiting for link (event-driven)...");
+    Serial.println("[ETH] Waiting for link...");
 }
 
 void loop() {
